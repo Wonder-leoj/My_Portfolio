@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wonder | Creator, Calibrator, Consumer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@400;600;700&family=Unbounded:wght@300;500;800&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
+            overflow-x: clip;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background:
+                radial-gradient(circle at 15% 20%, rgba(255,255,255,0.96), rgba(255,255,255,0) 28%),
+                radial-gradient(circle at 82% 78%, rgba(214, 191, 172, 0.75), rgba(214, 191, 172, 0) 30%),
+                linear-gradient(135deg, #efe5dc 0%, #e7dccd 22%, #f4efe9 52%, #e7d5bc 100%);
+            color: #3E2C2C;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .page-shell {
+            position: relative;
+            min-height: 100vh;
+        }
+
+        .page-shell::before {
+            content: "";
+            position: fixed;
+            inset: -10% -12% -10% -12%;
+            background:
+                radial-gradient(circle at 40% 32%, rgba(255,255,255,0.95), rgba(255,255,255,0) 22%),
+                radial-gradient(circle at 62% 65%, rgba(232, 214, 191, 0.9), rgba(232, 214, 191, 0) 30%),
+                linear-gradient(120deg, rgba(200,170,140,0.28), rgba(255,255,255,0.08), rgba(180,160,140,0.24));
+            filter: blur(78px);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Fine grain over the whole page — a small tiled texture (cheap to
+           paint regardless of page length, unlike one huge gradient) so the
+           glass panels have some real texture to diffuse rather than a flat
+           colour, which is what actually sells a glassmorphism effect. */
+        .page-shell::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            opacity: 0.05;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            background-size: 160px 160px;
+        }
+
+        .cursive {
+            font-family: 'Dancing Script', cursive;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .bg-icon { animation: none !important; }
+        }
+
+        /* Ambient background icons — decorative, low-opacity, sit behind
+           the content in each section (z-index:0, .container is 1). */
+        .bg-icon {
+            position: absolute;
+            color: #8A5A44;
+            opacity: 0.14;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .bg-icon svg { width: 100%; height: 100%; display: block; }
+
+        .bg-icon.float { animation: iconFloat 8s ease-in-out infinite; }
+        .bg-icon.pulse { animation: iconPulse 6.5s ease-in-out infinite; }
+
+        @keyframes iconFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-18px) rotate(6deg); }
+        }
+
+        @keyframes iconPulse {
+            0%, 100% { transform: scale(1); opacity: 0.1; }
+            50% { transform: scale(1.18); opacity: 0.22; }
+        }
+
+        /* Navigation — one compact glass capsule, centered and sticky.
+           Modeled on the "Clear" iOS26 style: mostly see-through, the
+           glass reads through refraction and a soft top sheen rather
+           than a heavy tint or blur. */
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            display: flex;
+            justify-content: center;
+            padding-top: 1.4rem;
+            pointer-events: none; /* only the capsule itself should catch clicks */
+        }
+
+        .nav-pill {
+            pointer-events: auto;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 0;
+            width: fit-content;
+            padding: 0.7rem 1.3rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.16);
+            backdrop-filter: blur(5px) saturate(160%) brightness(1.05);
+            -webkit-backdrop-filter: blur(5px) saturate(160%) brightness(1.05);
+            border: 1px solid rgba(255, 255, 255, 0.65);
+            box-shadow:
+                0 10px 26px rgba(62, 44, 44, 0.10),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8),
+                inset 0 -6px 10px rgba(255, 255, 255, 0.12);
+            overflow: hidden;
+            transition: padding 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-pill.expanded {
+            padding: 0.7rem 1.6rem;
+        }
+
+        /* Sentinel used to detect "scrolled a little" via IntersectionObserver
+           instead of a scroll listener — sits in normal document flow at the
+           very top of the page (outside the sticky header, so it actually
+           scrolls away rather than sticking with it) and takes up no visible
+           space. */
+        #navSentinel {
+            height: 50px;
+            margin-bottom: -50px;
+            pointer-events: none;
+        }
+
+        /* Diagonal sheen sweeping the top-left of the capsule — the
+           "refraction" cue that reads as real glass rather than a tinted box. */
+        .nav-pill::before {
+            content: "";
+            position: absolute;
+            top: -70%;
+            left: -20%;
+            width: 55%;
+            height: 240%;
+            background: linear-gradient(115deg, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0) 60%);
+            transform: rotate(8deg);
+            pointer-events: none;
+        }
+
+        .nav-links-wrap {
+            display: grid;
+            grid-template-columns: 0fr;
+            transition: grid-template-columns 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-links-wrap.side-left { padding-right: 0; transition: grid-template-columns 0.5s cubic-bezier(0.4, 0, 0.2, 1), padding-right 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .nav-links-wrap.side-right { padding-left: 0; transition: grid-template-columns 0.5s cubic-bezier(0.4, 0, 0.2, 1), padding-left 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        .nav-pill.expanded .nav-links-wrap {
+            grid-template-columns: 1fr;
+        }
+        .nav-pill.expanded .nav-links-wrap.side-left { padding-right: 0.3rem; }
+        .nav-pill.expanded .nav-links-wrap.side-right { padding-left: 0.3rem; }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+            position: relative;
+            z-index: 1;
+            min-width: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        .nav-pill.expanded .nav-links {
+            opacity: 1;
+            transition: opacity 0.35s ease 0.15s; /* fades in just after the capsule starts widening */
+        }
+
+        /* Each link gets its own dark glass "segment" that appears on hover —
+           same mechanism as the Inbox/Draft reference: a darker, contained
+           glass pill sitting inside the lighter outer capsule. */
+        .nav-link {
+            position: relative;
+            z-index: 1;
+            text-decoration: none;
+            display: inline-block;
+            color: #3E2C2C;
+            font-size: 0.72rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            font-weight: 600;
+            white-space: nowrap;
+            padding: 0.55rem 0.9rem;
+            border-radius: 999px;
+            transition: color 0.35s ease;
+        }
+
+        .nav-link::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            border-radius: 999px;
+            background: linear-gradient(160deg, rgba(46, 38, 34, 0.92), rgba(30, 24, 21, 0.8));
+            box-shadow:
+                inset 0 1px 1px rgba(255, 255, 255, 0.22),
+                inset 0 -4px 8px rgba(0, 0, 0, 0.35),
+                0 6px 14px rgba(46, 38, 34, 0.28);
+            opacity: 0;
+            transform: scale(0.85);
+            transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+        }
+
+        .nav-link:hover {
+            color: #F5EFE6;
+        }
+
+        .nav-link:hover::before {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Wordmark — a hybrid cut: a heavy geometric "Won" paired with
+           a flowing script "der", instead of one uniform typeface. */
+        .nav-wordmark {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: baseline;
+            font-family: 'Unbounded', sans-serif;
+            font-weight: 800;
+            font-size: 1.05rem;
+            letter-spacing: -0.01em;
+            color: #2e2622;
+            white-space: nowrap;
+            padding: 0 0.2rem;
+        }
+
+        .nav-wordmark .wm-script {
+            font-family: 'Dancing Script', cursive;
+            font-weight: 700;
+            font-size: 1.5rem;
+            color: #8A5A44;
+            margin-left: 0.05em;
+        }
+
+        .sticker {
+            padding: 4px 12px;
+            background: #FFFAE0;
+            border: 2px dashed #D1A151;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #B88A44;
+            display: inline-block;
+            transform: rotate(-3deg);
+            box-shadow: 2px 2px 0 rgba(0,0,0,0.1);
+            font-size: 0.75rem;
+        }
+
+        /* Landing / Hero — one large inset glass panel (not full-bleed),
+           replicating the Clarity Engine reference layout: a two-line
+           headline with an inline outlined badge, contact info and a
+           circular arrow bottom-left, copyright bottom-right. */
+        .landing {
+            min-height: 92vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4.5rem 2rem 3rem;
+            position: relative;
+            background:
+                radial-gradient(60% 70% at 50% 28%, rgba(255, 255, 255, 0.55), transparent 70%),
+                linear-gradient(180deg, #efe5dc 0%, #e8dcc5 100%);
+        }
+
+        .hero-panel {
+            position: relative;
+            overflow: hidden;
+            width: min(1400px, 92vw);
+            min-height: 50vh;
+            margin: 0 auto;
+            padding: clamp(2rem, 4vw, 3.5rem);
+            border-radius: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 2.5rem;
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            box-shadow:
+                0 30px 80px rgba(62, 44, 44, 0.16),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                inset 0 -20px 40px rgba(255, 255, 255, 0.12);
+        }
+
+        .hero-panel::before {
+            content: "";
+            position: absolute;
+            top: -60%;
+            left: -15%;
+            width: 45%;
+            height: 220%;
+            background: linear-gradient(115deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0) 60%);
+            transform: rotate(10deg);
+            pointer-events: none;
+        }
+
+        .hero-headline-row {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 1.5rem 2rem;
+        }
+
+        .hero-headline {
+            font-size: clamp(2.6rem, 6.2vw, 5.5rem);
+            font-weight: 700;
+            line-height: 0.96;
+            letter-spacing: -0.02em;
+            color: #2e2622;
+        }
+
+        .hero-badge {
+            margin-top: clamp(0.8rem, 2vw, 1.6rem);
+            border: 1px solid rgba(62, 44, 44, 0.32);
+            border-radius: 999px;
+            padding: 0.7rem 1.3rem;
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            text-align: center;
+            line-height: 1.5;
+            color: #3E2C2C;
+            white-space: nowrap;
+        }
+
+        .hero-footer-row {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+
+        .hero-contact {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+        }
+
+        .hero-arrow-btn {
+            width: 3rem;
+            height: 3rem;
+            flex: none;
+            border-radius: 50%;
+            border: 1px solid rgba(62, 44, 44, 0.35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #3E2C2C;
+            transition: background 0.3s ease, transform 0.3s ease;
+        }
+
+        .hero-arrow-btn:hover {
+            background: rgba(62, 44, 44, 0.08);
+            transform: translateY(-2px);
+        }
+
+        .hero-arrow-btn svg {
+            width: 1.1rem;
+            height: 1.1rem;
+        }
+
+        .hero-contact-text {
+            font-size: 0.8rem;
+            color: #7A6A6A;
+            line-height: 1.6;
+        }
+
+        .hero-copyright {
+            font-size: 0.8rem;
+            color: #7A6A6A;
+        }
+
+        @media (max-width: 640px) {
+            .hero-panel { padding: 2rem; border-radius: 28px; gap: 2.5rem; }
+            .hero-footer-row { flex-direction: column; align-items: flex-start; }
+        }
+
+        .work-section {
+            padding: 6rem 0;
+            background: linear-gradient(180deg, #e8dcc5 0%, #f2ecdf 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Soft warm blobs so the frosted card ahead has something real
+           to diffuse — frosted glass only reads as glass when there's
+           depth behind it to soften. */
+        .work-section::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(38% 30% at 20% 15%, rgba(255, 255, 255, 0.9), transparent 70%),
+                radial-gradient(45% 35% at 85% 60%, rgba(138, 90, 68, 0.28), transparent 70%),
+                radial-gradient(30% 25% at 30% 90%, rgba(209, 161, 81, 0.22), transparent 70%),
+                radial-gradient(32% 28% at 92% 12%, rgba(148, 168, 196, 0.22), transparent 70%),
+                radial-gradient(26% 22% at 6% 60%, rgba(190, 160, 200, 0.16), transparent 70%);
+            pointer-events: none;
+        }
+
+        .section-title {
+            font-size: 4rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 5rem;
+        }
+
+        .featured-project {
+            max-width: 900px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .project-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 0.6rem;
+            transform: rotate(4deg);
+            z-index: 10;
+        }
+
+        .project-card {
+            position: relative;
+            z-index: 1;
+            padding: 2.5rem;
+            border-radius: 28px;
+            background: rgba(255, 255, 255, 0.58);
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            box-shadow:
+                0 24px 54px rgba(62, 44, 44, 0.14),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                inset 0 -8px 20px rgba(255, 255, 255, 0.18);
+        }
+
+        .project-image1 {
+            width: 100%;
+            height: 500px;
+            background: url(Screenshot\ 2026-01-22\ 064338.png) center/contain no-repeat;
+            border-radius: 90px;
+        }
+
+        .project-title {
+            font-family: 'Unbounded', sans-serif;
+            font-size: 2.1rem;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .project-desc {
+            text-align: center;
+            color: #7A6A6A;
+            font-size: 1.1rem;
+            margin-top: 1rem;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .section-intro {
+            text-align: center;
+            margin: 6rem 0 4rem;
+        }
+
+        .section-intro h3 {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .section-intro p {
+            color: #7A6A6A;
+            font-size: 1.1rem;
+        }
+
+        .projects-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2.5rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .project-item {
+            position: relative;
+            background: rgba(255, 255, 255, 0.58);
+            border: 1px solid rgba(255, 255, 255, 0.55);
+            padding: 1.8rem;
+            border-radius: 22px;
+            box-shadow:
+                0 18px 40px rgba(62, 44, 44, 0.12),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7),
+                inset 0 -6px 16px rgba(255, 255, 255, 0.16);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease, opacity 0.3s ease, filter 0.3s ease;
+            opacity: 0.6;
+            filter: grayscale(100%);
+        }
+
+        .project-item:hover {
+            transform: translateY(-4px);
+            opacity: 1;
+            filter: grayscale(0);
+            border-color: rgba(138, 90, 68, 0.45);
+            box-shadow:
+                0 0 0 1px rgba(138, 90, 68, 0.12),
+                0 20px 45px rgba(62, 44, 44, 0.16),
+                0 0 32px rgba(138, 90, 68, 0.14),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .project-image {
+            width: 100%;
+            height: 250px;
+            border-radius: 12px;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .project-1 { background-image: url(Screenshot\ 2025-11-01\ 224432.png); background-color: #333; }
+        .project-2 { background-image: url(Screenshot\ 2025-11-01\ 224221.png); background-color: #555; }
+        .project-3 { background-image: url(Screenshot\ 2026-01-23\ 064523.png); background-color: #444; }
+        .project-4 { background-image: url(Screenshot\ 2026-01-23\ 065522.png); background-color: #666; }
+
+        .project-item h4 {
+            font-family: 'Unbounded', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            margin-top: 1.2rem;
+            color: #3E2C2C;
+        }
+
+        .project-item p {
+            color: #7A6A6A;
+            font-size: 0.95rem;
+            margin-top: 0.6rem;
+            line-height: 1.5;
+        }
+
+        /* "View Project" — glass capsule pill, matching the frosted
+           segmented-control reference: translucent, blurred, subtle
+           border and sheen, with a small arrow that only reveals fully
+           on hover. */
+        .project-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1.2rem;
+            padding: 0.7rem 1.5rem;
+            background: rgba(255, 255, 255, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            color: #3E2C2C;
+            text-decoration: none;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            overflow: hidden;
+            box-shadow:
+                0 8px 20px rgba(62, 44, 44, 0.10),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease, background 0.4s ease;
+        }
+
+        /* Spotlight that tracks the cursor position within the button
+           (--mx/--my set via JS on mousemove) — a distinct hover language
+           from the cards, specific to buttons. */
+        .project-btn {
+            --mx: 50%;
+            --my: 50%;
+        }
+
+        .project-btn::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(70px circle at var(--mx) var(--my), rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 70%);
+            opacity: 0;
+            transition: opacity 0.35s ease;
+            pointer-events: none;
+        }
+
+        .project-btn:hover::after {
+            opacity: 1;
+        }
+
+        .project-btn::before {
+            content: "";
+            position: absolute;
+            top: -70%;
+            left: -20%;
+            width: 45%;
+            height: 240%;
+            background: linear-gradient(115deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 60%);
+            transform: rotate(8deg);
+            pointer-events: none;
+        }
+
+        .project-btn .btn-arrow {
+            width: 0.95rem;
+            height: 0.95rem;
+            flex: none;
+            transform: translateX(-4px);
+            opacity: 0.7;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
+        }
+
+        .project-btn:hover {
+            background: rgba(255, 255, 255, 0.55);
+            transform: translateY(-3px);
+            box-shadow:
+                0 14px 30px rgba(62, 44, 44, 0.16),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .project-btn:hover .btn-arrow {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .vibe-section {
+            padding: 6rem 0;
+            background: linear-gradient(180deg, #f2ecdf 0%, #e8dcc5 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .vibe-section::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(30% 26% at 90% 10%, rgba(138, 90, 68, 0.14), transparent 70%),
+                radial-gradient(34% 30% at 8% 85%, rgba(209, 161, 81, 0.16), transparent 70%),
+                radial-gradient(24% 22% at 50% 40%, rgba(148, 168, 196, 0.12), transparent 70%);
+            pointer-events: none;
+        }
+
+        .vibe-header {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .vibe-header h2 {
+            font-size: 3.5rem;
+            font-weight: bold;
+            margin: 1.5rem 0;
+        }
+
+        .vibe-header p {
+            font-size: 1.2rem;
+            color: #7A6A6A;
+            margin-top: 1.5rem;
+        }
+
+        .vibe-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 5rem;
+            max-width: 1400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .vibe-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .vibe-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+
+        .vibe-card-image {
+            height: 320px;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .vibe-1 { background-image: url('Photos/af9b709ee85d63a8d117f55370728f11.jpg'); background-color: #D1C7BD; }
+        .vibe-2 { background-image: url('Photos/la\ Creamy\ Spaghetti\ Carbonara\ Perfection.jpg'); background-color: #A17C6B; }
+        .vibe-3 { background-image: url(download\ \(3\).jpeg); background-color: #8A5A44; }
+
+        .vibe-card-content {
+            padding: 2rem;
+        }
+
+        .vibe-card h3 {
+            font-size: 2rem;
+            color: #8A5A44;
+        }
+
+        .vibe-card p {
+            color: #7A6A6A;
+            margin-top: 0.5rem;
+        }
+
+        .story-section {
+            padding: 6rem 0;
+            background: linear-gradient(180deg, #e8dcc5 0%, #f5f0e5 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .story-section::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(32% 28% at 12% 20%, rgba(255, 255, 255, 0.7), transparent 70%),
+                radial-gradient(28% 24% at 88% 78%, rgba(190, 160, 200, 0.16), transparent 70%);
+            pointer-events: none;
+        }
+
+        .story-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .story-content h2 {
+            font-size: 4rem;
+            font-weight: bold;
+            margin-bottom: 2rem;
+        }
+
+        .story-content p {
+            font-size: 1.1rem;
+            color: #7A6A6A;
+            line-height: 1.8;
+        }
+
+        .story-icon {
+            width: 250px;
+            height: 250px;
+            background: rgba(138, 90, 68, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+        }
+
+        .story-icon svg {
+            width: 150px;
+            height: 150px;
+            stroke: #8A5A44;
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .contact-section {
+            padding: 6rem 0;
+            background: linear-gradient(180deg, #f5f0e5 0%, #e8dcc5 100%);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .contact-section::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(36% 30% at 50% 0%, rgba(138, 90, 68, 0.12), transparent 70%),
+                radial-gradient(26% 22% at 85% 85%, rgba(148, 168, 196, 0.14), transparent 70%);
+            pointer-events: none;
+        }
+
+        .contact-section h2 {
+            font-size: 4rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .contact-section p {
+            color: #7A6A6A;
+            font-size: 1.1rem;
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 4rem;
+            flex-wrap: wrap;
+        }
+
+        .social-icon {
+            width: 120px;
+            height: 120px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s;
+            text-decoration: none;
+            color: #7A6A6A;
+        }
+
+        .social-icon:hover {
+            transform: translateY(-10px);
+        }
+
+        .social-icon svg {
+            width: 60px;
+            height: 60px;
+            stroke: #7A6A6A;
+            stroke-width: 1.5;
+            fill: none;
+        }
+        
+        .social-icon svg[fill="currentColor"] {
+             fill: #7A6A6A;
+             stroke: none;
+        }
+
+        .social-icon:hover svg {
+            stroke: #8A5A44;
+        }
+         .social-icon:hover svg[fill="currentColor"] {
+             fill: #8A5A44;
+        }
+
+        footer {
+            padding: 4rem 0;
+            background: linear-gradient(180deg, #e8dcc5 0%, #f2ecdf 100%);
+            text-align: center;
+            color: #7A6A6A;
+        }
+
+        @media (max-width: 640px) {
+            .nav-pill { gap: 0; padding: 0.5rem 0.9rem; }
+            .nav-pill.expanded { padding: 0.5rem 1.1rem; }
+            .nav-links { gap: 0; }
+            .nav-link { font-size: 0.58rem; padding: 0.5rem 0.55rem; }
+            .nav-wordmark { font-size: 0.85rem; padding: 0 0.1rem; }
+            .nav-wordmark .wm-script { font-size: 1.2rem; }
+        }
+
+        @media (max-width: 968px) {
+            .hero-headline { font-size: clamp(2.4rem, 10vw, 3.5rem); }
+            .section-title { font-size: 3rem; }
+            .projects-grid { grid-template-columns: 1fr; }
+            .vibe-grid { grid-template-columns: 1fr; }
+            .story-grid { grid-template-columns: 1fr; }
+            .sticker { top: 1rem !important; left: 1rem !important; }
+        }
+        /* Custom cursor accent — a small dot + trailing ring that follows
+           the real cursor. Deliberately does NOT hide the native pointer
+           (learned the hard way: replacing it made it too easy to lose
+           track of where you actually are), it just rides alongside it. */
+        @media (hover: hover) and (pointer: fine) {
+            .cursor-dot, .cursor-ring {
+                position: fixed;
+                top: 0;
+                left: 0;
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 9999;
+                transform: translate3d(-100px, -100px, 0) translate(-50%, -50%);
+                will-change: transform;
+            }
+
+            .cursor-dot {
+                width: 8px;
+                height: 8px;
+                background: #8A5A44;
+                box-shadow: 0 0 0 3px rgba(138, 90, 68, 0.18);
+                transition: opacity 0.2s ease, background 0.3s ease, width 0.25s cubic-bezier(0.4,0,0.2,1), height 0.25s cubic-bezier(0.4,0,0.2,1);
+            }
+
+            .cursor-ring {
+                width: 34px;
+                height: 34px;
+                border: 1.5px solid rgba(62, 44, 44, 0.4);
+                transition: opacity 0.2s ease, width 0.3s cubic-bezier(0.4,0,0.2,1), height 0.3s cubic-bezier(0.4,0,0.2,1), background 0.3s ease, border-color 0.3s ease;
+            }
+
+            .cursor-ring.hovering {
+                width: 56px;
+                height: 56px;
+                background: rgba(138, 90, 68, 0.10);
+                border-color: rgba(138, 90, 68, 0.65);
+            }
+
+            .cursor-dot.clicking { width: 5px; height: 5px; }
+            .cursor-ring.clicking { width: 26px; height: 26px; }
+
+            .cursor-dot.hidden, .cursor-ring.hidden { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-shell">
+        <div id="navSentinel" aria-hidden="true"></div>
+
+        <header class="topbar">
+            <nav class="nav-pill" id="navPill" aria-label="Main navigation">
+                <div class="nav-links-wrap side-left">
+                    <div class="nav-links">
+                        <a href="#projects" class="nav-link">Projects</a>
+                        <a href="#about" class="nav-link">About</a>
+                    </div>
+                </div>
+
+                <div class="nav-wordmark">Won<span class="wm-script">der</span></div>
+
+                <div class="nav-links-wrap side-right">
+                    <div class="nav-links">
+                        <a href="#resume" class="nav-link">Resume</a>
+                        <a href="#contact" class="nav-link">Contact</a>
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+    <section class="landing">
+        <div class="sticker" style="position: absolute; top: 4rem; left: 4rem;">FILE: W-001</div>
+
+        <div class="bg-icon float" style="top:6%; right:5%; width:34px; height:34px; animation-delay:.2s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/></svg>
+        </div>
+        <div class="bg-icon pulse" style="bottom:10%; left:4%; width:46px; height:46px; animation-delay:1s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M8.5 12l2.5 2.5 4.5-5"/></svg>
+        </div>
+        <div class="bg-icon float" style="top:22%; left:2%; width:30px; height:30px; animation-delay:1.6s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2l3 6 6 1-4.5 4 1 6-5.5-3-5.5 3 1-6L4 9l6-1 2-6z"/></svg>
+        </div>
+        <div class="bg-icon pulse" style="bottom:16%; right:3%; width:40px; height:40px; animation-delay:.5s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 17L17 7M7 7h10v10"/></svg>
+        </div>
+        <div class="bg-icon float" style="top:38%; left:8%; width:24px; height:24px; animation-delay:2.2s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="8"/></svg>
+        </div>
+        <div class="bg-icon pulse" style="top:6%; left:32%; width:20px; height:20px; animation-delay:1.4s;">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c.6 3.6 2.4 5.4 6 6-3.6.6-5.4 2.4-6 6-.6-3.6-2.4-5.4-6-6 3.6-.6 5.4-2.4 6-6z"/></svg>
+        </div>
+        <div class="bg-icon float" style="bottom:4%; left:40%; width:28px; height:28px; animation-delay:.2s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17.5 19a4.5 4.5 0 000-9 6 6 0 00-11.4 2A4 4 0 006 19h11.5z"/></svg>
+        </div>
+        <div class="bg-icon pulse" style="top:65%; right:22%; width:22px; height:22px; animation-delay:1.9s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2l9 5-9 5-9-5 9-5z"/><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9 5 9-5"/></svg>
+        </div>
+
+        <div class="hero-panel">
+            <div class="bg-icon float" style="top:12%; right:22%; width:26px; height:26px; animation-delay:.8s; opacity:.16;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+            </div>
+            <div class="bg-icon pulse" style="bottom:34%; right:14%; width:22px; height:22px; animation-delay:1.3s; opacity:.14;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+            </div>
+            <div class="hero-headline-row">
+                <h1 class="hero-headline">Hello<br>I'm Wonder</h1>
+                <div class="hero-badge">Cybersecurity + Intelligence Analyst<br>Creative Studio</div>
+            </div>
+
+            <div class="hero-footer-row">
+                <div class="hero-contact">
+                    <a href="#projects" class="hero-arrow-btn" aria-label="Scroll to projects">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                        </svg>
+                    </a>
+                    <div class="hero-contact-text">
+                        +234 906 555 6256<br>
+                        wonderintechlab@gmail.com<br>
+                        Kaduna, Nigeria
+                    </div>
+                </div>
+                <div class="hero-copyright">&copy; Wonder 2026</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="work-section">
+        <div class="bg-icon float" style="top:8%; right:8%; width:52px; height:52px; animation-delay:.3s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 18l-6-6 6-6M15 6l6 6-6 6"/></svg>
+        </div>
+        <div class="bg-icon pulse" style="bottom:6%; left:5%; width:60px; height:60px; animation-delay:1.2s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 8l-9-5-9 5v8l9 5 9-5V8z"/><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l9 5 9-5M12 13v8"/></svg>
+        </div>
+        <div class="bg-icon float" style="top:38%; right:4%; width:30px; height:30px; animation-delay:2.1s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2l6 8-6 12-6-12 6-8z"/></svg>
+        </div>
+        <div class="bg-icon pulse" style="top:55%; left:10%; width:26px; height:26px; animation-delay:.9s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2l9 5-9 5-9-5 9-5z"/><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9 5 9-5M3 17l9 5 9-5"/></svg>
+        </div>
+        <div class="container">
+            <h2 class="section-title">My <span class="cursive">Creations</span></h2>
+            
+            <div class="featured-project">
+                <div class="sticker project-badge">A-GRADE</div>
+                <div class="project-card">
+                    <div class="project-image1"></div>
+                </div>
+                <h3 class="project-title">Curate</h3>
+                <p class="project-desc">A full "head-to-toe" build of my brand website. This is what happens when I'm playing with code</p>
+                <div style="text-align: center;">
+                    <a href="fashionpro4.html" target="_blank" class="project-btn"><span class="btn-label">View Project</span><svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a>
+                </div>
+            </div>
+
+            <div class="section-intro">
+                <h3>Below are four websites where my creativity felt like showing off...</h3>
+                <p>...scroll at your own risk.</p>
+            </div>
+            
+            <div class="projects-grid">
+                <div class="project-item">
+                    <div class="project-image project-1"></div>
+                    <h4>My Coffee Website</h4>
+                    <p>My redefined coffee page for taste and caffeine</p>
+                    <a href="coffeewebsite.html" target="_blank" class="project-btn"><span class="btn-label">View Project</span><svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a>
+                </div>
+                
+                <div class="project-item">
+                    <div class="project-image project-2"></div>
+                    <h4>My Pizza.Co Website</h4>
+                    <p>A full build of my Pizza website<p>
+                    <a href="pizzawebsite.html" target="_blank" class="project-btn"><span class="btn-label">View Project</span><svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a>
+                </div>
+
+                <div class="project-item">
+                    <div class="project-image project-3"></div>
+                    <h4>To-Do List</h4>
+                    <p>My well-designed to-do list</p>
+                    <a href="to-do_list2.html" target="_blank" class="project-btn"><span class="btn-label">View Project</span><svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a>
+                </div>
+
+                <div class="project-item">
+                    <div class="project-image project-4"></div>
+                    <h4>Advanced Calculator</h4>
+                    <p>A fully responsive calculator</p>
+                    <a href="calculator.html" target="_blank" class="project-btn"><span class="btn-label">View Project</span><svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg></a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="vibe-section">
+        <div class="bg-icon pulse" style="top:10%; left:6%; width:40px; height:40px; animation-delay:.6s;">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c.6 3.6 2.4 5.4 6 6-3.6.6-5.4 2.4-6 6-.6-3.6-2.4-5.4-6-6 3.6-.6 5.4-2.4 6-6z"/></svg>
+        </div>
+        <div class="bg-icon float" style="bottom:8%; right:6%; width:50px; height:50px; animation-delay:1.8s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/></svg>
+        </div>
+        <div class="bg-icon pulse" style="top:60%; right:16%; width:24px; height:24px; animation-delay:.3s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </div>
+        <div class="container">
+            <div class="vibe-header">
+                <div class="sticker">PERSONAL VIBE</div>
+                <h2>Creativity blooms where there's interest and passion. Eventually, it creates momentum and becomes something INCREDIBLE</h2>
+                <p>I thrive on energy directed to what excites me in life. I love neutral coded colours that bring out the mundane, the boredom in things that are too complicated, cause we create more when our mind is calm. My taste in fashion, food, colours, .</p>
+            </div>
+
+            <div class="vibe-grid">
+                <div class="vibe-card">
+                    <div class="vibe-card-image vibe-1"></div>
+                    <div class="vibe-card-content">
+                        <h3 class="cursive">Fashion</h3>
+                    
+                    </div>
+                </div>
+
+                <div class="vibe-card">
+                    <div class="vibe-card-image vibe-2"></div>
+                    <div class="vibe-card-content">
+                        <h3 class="cursive">Food</h3>
+                    </div>
+                </div>
+
+                <div class="vibe-card">
+                    <div class="vibe-card-image vibe-3"></div>
+                    <div class="vibe-card-content">
+                        <h3 class="cursive">Music</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="story-section">
+        <div class="sticker" style="position: absolute; top: 2.5rem; left: 2.5rem;">FILE: W-002</div>
+        <div class="bg-icon float" style="top:12%; right:10%; width:46px; height:46px; animation-delay:.9s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        </div>
+        <div class="bg-icon pulse" style="bottom:14%; left:12%; width:28px; height:28px; animation-delay:1.7s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 17L17 7M7 7h10v10"/></svg>
+        </div>
+        <div class="container">
+            <div class="story-grid">
+                <div class="story-content">
+                    <h2>My <span class="cursive">Story</span></h2>
+                    <p>I've had this thing for most things tech related for as long as I can remember. I can create as much as I can consume. My passion for cyber security & coding bloomed while I was still growing up as a teenager.</p>
+                    <br>
+                    <p>I have this feeling that I was meant to inspire, create, and explore. This is just part of the journey.</p>
+                </div>
+                <div class="story-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="contact-section">
+        <div class="sticker" style="position: absolute; top: 2.5rem; left: 2.5rem;">FILE: W-003</div>
+        <div class="bg-icon pulse" style="bottom:10%; left:8%; width:42px; height:42px; animation-delay:.4s;">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c.6 3.6 2.4 5.4 6 6-3.6.6-5.4 2.4-6 6-.6-3.6-2.4-5.4-6-6 3.6-.6 5.4-2.4 6-6z"/></svg>
+        </div>
+        <div class="bg-icon float" style="top:8%; right:10%; width:44px; height:44px; animation-delay:1.5s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 3h12a1 1 0 011 1v17l-7-4-7 4V4a1 1 0 011-1z"/></svg>
+        </div>
+        <div class="bg-icon pulse" style="top:50%; left:6%; width:24px; height:24px; animation-delay:.7s;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+        </div>
+        <div class="container">
+            <h2>You can <span class="cursive">stalk</span> me here</h2>
+            <p>No, seriously. My DMs are open.</p>
+
+            <div class="social-links">
+                <a href="https://instagram.com/wonder.butmore" target="_blank" class="social-icon">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                    </svg>
+                </a>
+
+                <a href="https://linkedin.com/in/wonder-joel" target="_blank" class="social-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                        <rect x="2" y="9" width="4" height="12"></rect>
+                        <circle cx="4" cy="4" r="2"></circle>
+                    </svg>
+                </a>
+
+                <a href="https://tiktok.com/@_maravilloso" target="_blank" class="social-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                    </svg>
+                </a>
+
+                <a href="mailto:your-email@example.com" class="social-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; <span id="year"></span> Wonder.<br>Built with inspiration, interest, and code.</p>
+    </footer>
+
+    <div class="cursor-dot hidden" id="cursorDot"></div>
+    <div class="cursor-ring hidden" id="cursorRing"></div>
+
+    <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
+
+        // Nav expand/collapse: on load, only the wordmark shows; scrolling
+        // past a small threshold expands the capsule to reveal the links,
+        // scrolling back to top collapses it again. Uses IntersectionObserver
+        // against a 1px sentinel instead of a scroll listener, so there's no
+        // per-frame scroll handler running.
+        (() => {
+            const navPill = document.getElementById('navPill');
+            const sentinel = document.getElementById('navSentinel');
+            if (!navPill || !sentinel) return;
+
+            const io = new IntersectionObserver(
+                (entries) => {
+                    const atTop = entries[0].isIntersecting;
+                    navPill.classList.toggle('expanded', !atTop);
+                },
+                { threshold: 0 }
+            );
+            io.observe(sentinel);
+        })();
+
+        // Custom cursor — dot follows instantly, ring trails with a light
+        // lerp for smoothness. Only runs on devices with an actual mouse.
+        (() => {
+            if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+
+            const dot = document.getElementById('cursorDot');
+            const ring = document.getElementById('cursorRing');
+            if (!dot || !ring) return;
+
+            let mouseX = -100, mouseY = -100;
+            let ringX = -100, ringY = -100;
+            let started = false;
+
+            const hoverSelector = 'a, button, .nav-link, .toggle, .expand-btn, .project-btn, .hero-arrow-btn, .phone-tab';
+
+            function loop() {
+                ringX += (mouseX - ringX) * 0.18;
+                ringY += (mouseY - ringY) * 0.18;
+                ring.style.transform = `translate3d(${ringX}px, ${ringY}px, 0) translate(-50%, -50%)`;
+                requestAnimationFrame(loop);
+            }
+            loop();
+
+            document.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+                dot.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0) translate(-50%, -50%)`;
+                if (!started) {
+                    started = true;
+                    ringX = mouseX; ringY = mouseY;
+                    dot.classList.remove('hidden');
+                    ring.classList.remove('hidden');
+                }
+            }, { passive: true });
+
+            document.addEventListener('mouseover', (e) => {
+                if (e.target.closest(hoverSelector)) ring.classList.add('hovering');
+            });
+            document.addEventListener('mouseout', (e) => {
+                if (e.target.closest(hoverSelector)) {
+                    const to = e.relatedTarget;
+                    if (!to || !to.closest || !to.closest(hoverSelector)) ring.classList.remove('hovering');
+                }
+            });
+
+            document.addEventListener('mousedown', () => {
+                dot.classList.add('clicking');
+                ring.classList.add('clicking');
+            });
+            document.addEventListener('mouseup', () => {
+                dot.classList.remove('clicking');
+                ring.classList.remove('clicking');
+            });
+
+            document.documentElement.addEventListener('mouseleave', () => {
+                dot.classList.add('hidden');
+                ring.classList.add('hidden');
+            });
+        })();
+        // Spotlight on "View Project" buttons — follows the cursor within
+        // the button via CSS custom properties.
+        document.addEventListener('mousemove', (e) => {
+            const btn = e.target.closest('.project-btn');
+            if (!btn) return;
+            const rect = btn.getBoundingClientRect();
+            btn.style.setProperty('--mx', `${e.clientX - rect.left}px`);
+            btn.style.setProperty('--my', `${e.clientY - rect.top}px`);
+        }, { passive: true });
+    </script>
+
+    </div>
+</body>
+</html>
